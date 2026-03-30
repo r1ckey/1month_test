@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STUDY2: Data Engineer Mastery Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --primary: #3b82f6;
+            --accent: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .module-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .axis-group {
+            margin-bottom: 20px;
+        }
+
+        .axis-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
+            font-weight: 700;
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+
+        .module-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            cursor: pointer;
+            gap: 8px;
+            border: 1px solid transparent;
+        }
+
+        .module-item:hover {
+            background: #f8fafc;
+            border-color: var(--border);
+        }
+
+        .module-item.active {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .module-item input {
+            margin-top: 4px;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .module-label {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .module-id {
+            font-weight: 700;
+            color: var(--primary);
+            font-family: monospace;
+        }
+
+        /* Main Dashboard */
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .top-row {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-container {
+            height: 280px;
+        }
+
+        .progress-bars {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .progress-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .progress-track {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+
+        /* Viewer */
+        .content-viewer {
+            background: #fff;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 40px;
+            min-height: 500px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        #md-content {
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.7;
+            color: #334155;
+        }
+
+        #md-content h1 { font-size: 1.8rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; color: var(--text-main); }
+        #md-content h2 { font-size: 1.4rem; margin-top: 30px; color: var(--text-main); border-left: 5px solid var(--primary); padding-left: 15px; }
+        #md-content blockquote { background: #f8fafc; border-left: 4px solid var(--accent); padding: 15px; margin: 20px 0; font-style: italic; }
+        #md-content code { background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+        #md-content pre { background: #1e293b; color: #f8fafc; padding: 20px; border-radius: 8px; overflow-x: auto; }
+
+        .btn-home {
+            text-decoration: none;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            border: 1px solid #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn-home:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>📊 STUDY2 Dashboard <a href="../index.html" class="btn-home">Home</a></h1>
+            <p style="font-size: 0.75rem; color: var(--text-sub); margin-top: 5px;">Data Engineer Practice: 100 Missions</p>
+        </div>
+        <div class="module-list" id="module-list"></div>
+    </div>
+
+    <div class="main">
+        <div class="top-row">
+            <div class="card">
+                <div class="card-title">Skill Radar Mastery</div>
+                <div class="chart-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Axis Progress Analytics</div>
+                <div class="progress-bars" id="progress-bars"></div>
+            </div>
+        </div>
+        
+        <div class="content-viewer">
+            <div id="md-content">
+                <div style="text-align: center; color: #94a3b8; margin-top: 100px;">
+                    <h2 style="border:none;">Welcome to the Mastery Program</h2>
+                    <p>左側のリストからモジュールを選択して学習を開始してください。<br>読了後にチェックを入れるとスキルチャートが成長します。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard_data.js"></script>
+    <script>
+        const STORAGE_KEY = 'study2_mastery_v1';
+        let progress = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        let radarChart;
+
+        function init() {
+            renderModuleList();
+            renderProgressBars();
+            initChart();
+            updateAll();
+        }
+
+        function renderModuleList() {
+            const container = document.getElementById('module-list');
+            dashboardData.forEach(axis => {
+                const group = document.createElement('div');
+                group.className = 'axis-group';
+                group.innerHTML = `<div class="axis-title">${axis.title}</div>`;
+                
+                axis.modules.forEach(mod => {
+                    const item = document.createElement('div');
+                    item.className = 'module-item';
+                    item.id = `item-${mod.id}`;
+                    const isChecked = progress[mod.id] ? 'checked' : '';
+                    
+                    item.innerHTML = `
+                        <input type="checkbox" id="chk-${mod.id}" ${isChecked} onclick="event.stopPropagation(); toggleModule('${mod.id}')">
+                        <div class="module-label" onclick="loadContent('${mod.id}', '${mod.path}')">
+                            <span class="module-id">[${mod.id}]</span> ${mod.title}
+                        </div>
+                    `;
+                    group.appendChild(item);
+                });
+                container.appendChild(group);
+            });
+        }
+
+        function toggleModule(id) {
+            progress[id] = document.getElementById(`chk-${id}`).checked;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+            updateAll();
+        }
+
+        async function loadContent(id, path) {
+            // UI Update
+            document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`item-${id}`).classList.add('active');
+
+            const viewer = document.getElementById('md-content');
+            viewer.innerHTML = '<p style="text-align:center; margin-top:50px;">Loading module...</p>';
+            
+            try {
+                const response = await fetch(path);
+                if (!response.ok) throw new Error('File not found');
+                const text = await response.text();
+                viewer.innerHTML = marked.parse(text);
+                viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (err) {
+                viewer.innerHTML = `<p style="color:red; text-align:center; margin-top:50px;">Error: ${err.message}</p>`;
+            }
+        }
+
+        function renderProgressBars() {
+            const container = document.getElementById('progress-bars');
+            container.innerHTML = '';
+            dashboardData.forEach(axis => {
+                const total = axis.modules.length;
+                const done = axis.modules.filter(m => progress[m.id]).length;
+                const percent = Math.round((done / total) * 100);
+                
+                const item = document.createElement('div');
+                item.className = 'progress-item';
+                item.innerHTML = `
+                    <div class="progress-header">
+                        <span>${axis.title}</span>
+                        <span>${percent}%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: ${percent}%; background: ${axis.color}"></div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: dashboardData.map(a => a.title.split(' ')[0]),
+                    datasets: [{
+                        label: 'Mastery Level',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: { display: false, stepSize: 20 },
+                            pointLabels: { font: { size: 10, weight: 'bold' } }
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function updateAll() {
+            const scores = dashboardData.map(axis => {
+                const done = axis.modules.filter(m => progress[m.id]).length;
+                return Math.round((done / axis.modules.length) * 100);
+            });
+            radarChart.data.datasets[0].data = scores;
+            radarChart.update();
+            renderProgressBars();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
