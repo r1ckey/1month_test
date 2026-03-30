@@ -18,6 +18,7 @@
             --primary: #3b82f6;        /* Blue-500 */
             --accent: #10b981;         /* Emerald-500 */
             --selection: #334155;
+            --mobile-header-height: 60px;
         }
 
         body {
@@ -28,6 +29,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            transition: all 0.3s;
         }
 
         /* Sidebar */
@@ -37,8 +39,9 @@
             display: flex;
             flex-direction: column;
             background: var(--sidebar-bg);
-            z-index: 10;
+            z-index: 100;
             box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .sidebar-header {
@@ -263,9 +266,99 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Mobile Adjustments */
+        .mobile-header {
+            display: none;
+            height: var(--mobile-header-height);
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            padding: 0 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            justify-content: space-between;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 90;
+            backdrop-filter: blur(4px);
+        }
+
+        @media (max-width: 1024px) {
+            .top-row {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: visible;
+            }
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                width: 85%;
+                max-width: 320px;
+            }
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+            }
+            body.sidebar-open .overlay {
+                display: block;
+            }
+            .mobile-header {
+                display: flex;
+            }
+            .main {
+                padding: 20px;
+                margin-top: var(--mobile-header-height);
+            }
+            .content-viewer {
+                padding: 20px;
+            }
+            #md-content h1 { font-size: 1.6rem; }
+            #md-content h2 { font-size: 1.3rem; }
+            .progress-bars {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="mobile-header">
+        <h1 style="font-size: 0.9rem; margin: 0;">🚀 STUDY2 Mastery</h1>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    </div>
+    <div class="overlay" onclick="toggleSidebar()"></div>
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>🚀 STUDY2 DE Mastery <a href="../index.html" class="btn-home">Home</a></h1>
@@ -304,6 +397,10 @@
         const STORAGE_KEY = 'study2_mastery_v1';
         let progress = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
         let radarChart;
+
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-open');
+        }
 
         function init() {
             renderModuleList();
@@ -347,6 +444,10 @@
             document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.getElementById(`item-${id}`);
             if(activeItem) activeItem.classList.add('active');
+
+            if(window.innerWidth <= 768) {
+                toggleSidebar();
+            }
 
             const viewer = document.getElementById('md-content');
             viewer.innerHTML = '<div style="text-align:center; margin-top:100px; color:#64748b;">Loading technical content...</div>';
